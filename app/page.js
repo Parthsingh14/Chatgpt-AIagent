@@ -4,20 +4,68 @@ import { useState, useRef, useEffect } from "react";
 export default function Home() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([
-    { role: "bot", text: "I am Good" }, // default bot msg
+    { role: "bot", text: "Hey, I’m Jero! How can I help you today?" },
   ]);
+  const [loading, setLoading] = useState(false);
 
   const messagesEndRef = useRef(null);
 
-  // Auto-scroll jab bhi new msg aaye
+  // Auto-scroll when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    setMessages([...messages, { role: "user", text: input }]);
+  const handleSend = async () => {
+    if (!input.trim() || loading) return;
+
+    const userMessage = { role: "user", text: input };
+    const updatedMessages = [...messages, userMessage];
+
+    // Immediately update UI
+    setMessages(updatedMessages);
     setInput("");
+    setLoading(true);
+
+    try {
+      // Prepare prevMessages for backend (convert to format Groq expects)
+      const formattedPrevMessages = updatedMessages.map((msg) => {
+        return {
+          role: msg.role === "bot" ? "assistant" : "user",
+          content: msg.text,
+        };
+      });
+
+      const res = await fetch("/api/llmchat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: input,
+          prevMessages: formattedPrevMessages,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data?.reply) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "bot", text: data.reply },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { role: "bot", text: "⚠️ Sorry, something went wrong." },
+        ]);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      setMessages((prev) => [
+        ...prev,
+        { role: "bot", text: "⚠️ Failed to reach Jero. Please try again." },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -50,6 +98,11 @@ export default function Home() {
               </div>
             </div>
           ))}
+
+          {loading && (
+            <div className="text-gray-400 text-sm italic px-3">Jero is typing...</div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
       </div>
@@ -68,9 +121,10 @@ export default function Home() {
           <div className="flex justify-end items-center p-3">
             <button
               onClick={handleSend}
-              className="bg-white px-4 py-1 text-black rounded-full cursor-pointer hover:bg-gray-300"
+              disabled={loading}
+              className="bg-white px-4 py-1 text-black rounded-full cursor-pointer hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Send
+              {loading ? "Sending..." : "Send"}
             </button>
           </div>
         </div>
