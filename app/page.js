@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 export default function Home() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([
-    { role: "bot", text: "Hey, I’m Jero! How can I help you today?" },
+    { role: "assistant", content: "Hey, I’m Jero! How can I help you today?" },
   ]);
   const [loading, setLoading] = useState(false);
 
@@ -18,7 +18,7 @@ export default function Home() {
   const handleSend = async () => {
     if (!input.trim() || loading) return;
 
-    const userMessage = { role: "user", text: input };
+    const userMessage = { role: "user", content: input };
     const updatedMessages = [...messages, userMessage];
 
     // Immediately update UI
@@ -27,20 +27,13 @@ export default function Home() {
     setLoading(true);
 
     try {
-      // Prepare prevMessages for backend (convert to format Groq expects)
-      const formattedPrevMessages = updatedMessages.map((msg) => {
-        return {
-          role: msg.role === "bot" ? "assistant" : "user",
-          content: msg.text,
-        };
-      });
 
       const res = await fetch("/api/llmchat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question: input,
-          prevMessages: formattedPrevMessages,
+          prevMessages: updatedMessages,
         }),
       });
 
@@ -49,19 +42,19 @@ export default function Home() {
       if (data?.reply) {
         setMessages((prev) => [
           ...prev,
-          { role: "bot", text: data.reply },
+          { role: "assistant", content: data.reply },
         ]);
       } else {
         setMessages((prev) => [
           ...prev,
-          { role: "bot", text: "⚠️ Sorry, something went wrong." },
+          { role: "assistant", content: "⚠️ Sorry, something went wrong." },
         ]);
       }
     } catch (error) {
       console.error("Error:", error);
       setMessages((prev) => [
         ...prev,
-        { role: "bot", text: "⚠️ Failed to reach Jero. Please try again." },
+        { role: "assistant", content: "⚠️ Failed to reach Jero. Please try again." },
       ]);
     } finally {
       setLoading(false);
@@ -94,7 +87,7 @@ export default function Home() {
                     : "bg-neutral-700 text-white"
                 }`}
               >
-                {msg.text}
+                {msg.content}
               </div>
             </div>
           ))}

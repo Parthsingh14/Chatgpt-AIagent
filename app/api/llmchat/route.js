@@ -26,7 +26,6 @@ export async function POST(req) {
         1. webSearch({query}: {query:string}) — Search the latest news and information on the web.`,
       },
       ...prevMessages,
-      { role: "user", content: question },
     ];
 
     // --- Chat loop (single request/response cycle)
